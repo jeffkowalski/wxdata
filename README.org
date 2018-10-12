@@ -1,0 +1,4 @@
+* determine who is using the port
+#+BEGIN_SRC shell
+fuser 6500/tcp
+#+END_SRC
