@@ -3,6 +3,7 @@ require 'fileutils'
 require 'logger'
 require 'socket'
 require 'influxdb'
+include Socket::Constants
 
 LOGFILE = File.join(Dir.home, '.log', '.ws1001.log')
 
@@ -71,15 +72,6 @@ class Ambient < Thor
     setup_logger
 
     begin
-      $logger.info "opening server on port #{TCPPORT}"
-      server = TCPServer.new('192.168.7.20', TCPPORT)
-    rescue => e
-      $logger.error "caught exception #{e}"
-      $logger.error e.backtrace.join("\n")
-      exit
-    end
-
-    begin
       $logger.info 'opening udp socket'
       udpsock = UDPSocket.new
       begin
@@ -95,52 +87,60 @@ class Ambient < Thor
         udpsock.close
       end
 
-      timeval = [90, 0].pack("l_2") # 90 seconds
-      server.setsockopt(Socket::SOL_SOCKET, Socket::SO_RCVTIMEO, timeval)
-      server.setsockopt(Socket::SOL_SOCKET, Socket::SO_SNDTIMEO, timeval)
-      $logger.info "waiting for connection on port #{TCPPORT}"
-      client = server.accept
+      $logger.info "opening server on port #{TCPPORT}"
       begin
-        $logger.info "accepted connection from #{client.peeraddr.join(':')}"
-        sleep 2
-        $logger.info 'sending request'
-        client.puts SNDMSG
-        $logger.info 'awaiting response'
-        rcvmsg = client.gets
+        server = Socket.new(AF_INET, SOCK_STREAM, 0)
+        sockaddr = Socket.sockaddr_in(TCPPORT, '192.168.7.20')
+        timeval = [90, 0].pack("l_2") # 90 seconds
+        server.setsockopt(Socket::SOL_SOCKET, Socket::SO_RCVTIMEO, timeval)
+        server.setsockopt(Socket::SOL_SOCKET, Socket::SO_SNDTIMEO, timeval)
+        server.bind(sockaddr)
+        server.listen(5)
+        begin
+          $logger.info "waiting for connection on port #{TCPPORT}"
+          client_socket, client_sockaddr = server.accept_nonblock
+        rescue Errno::EAGAIN, Errno::ECONNABORTED, Errno::EINTR, Errno::EWOULDBLOCK => e
+          $logger.info "handling benign exception: #{e}"
+          IO.select([server])
+          $logger.info "retrying"
+          retry
+        else
+          $logger.info "accepted connection from #{client_sockaddr.ip_unpack.join(':')}"
+          sleep 2
+          $logger.info 'sending request'
+          client_socket.puts SNDMSG
+          $logger.info 'awaiting response'
+          rcvmsg = client_socket.gets
+          timestamp = Time.now.to_i
 
-        timestamp = Time.now.to_i
+          # Unpack NOWRECORD message received from console
+          packing = (FIELDS.collect { |field| field[:pack] }).join ''
+          $logger.info "unpacking '#{packing}" # c.f. "A8 A8 Z16 S C I C S C2 f14 C2"
+          msgcontent = rcvmsg.unpack packing
 
-        # Unpack NOWRECORD message received from console
-        packing = (FIELDS.collect { |field| field[:pack] }).join ''
-        $logger.info "unpacking '#{packing}" # c.f. "A8 A8 Z16 S C I C S C2 f14 C2"
-        msgcontent = rcvmsg.unpack packing
+          (0..FIELDS.length-1).each { |index|
+            $logger.info FIELDS[index][:name].ljust(21) + msgcontent[index].class.to_s.ljust(10) + msgcontent[index].to_s
+          }
 
-        (0..FIELDS.length-1).each { |index|
-          $logger.info FIELDS[index][:name].ljust(21) + msgcontent[index].class.to_s.ljust(10) + msgcontent[index].to_s
-        }
-
-        influxdb = InfluxDB::Client.new 'wxdata'
-        (0..FIELDS.length-1).each { |index|
-          data = { values: { value:  msgcontent[index] }, timestamp: timestamp }
-          influxdb.write_point FIELDS[index][:name], data unless msgcontent[index].nil?
-        }
+          influxdb = InfluxDB::Client.new 'wxdata'
+          (0..FIELDS.length-1).each { |index|
+            data = { values: { value:  msgcontent[index] }, timestamp: timestamp }
+            influxdb.write_point FIELDS[index][:name], data unless msgcontent[index].nil?
+          }
+        ensure
+          $logger.info "closing client connection"
+          client_socket.close unless client_socket.nil?
+        end
       rescue => e
         $logger.error "caught exception #{e}"
         $logger.error e.backtrace.join("\n")
         exit
       ensure
-        $logger.info "closing client connection"
-        client.close
+        $logger.info "closing server"
+        server.close unless server.nil?
       end
-    rescue => e
-      $logger.error "caught exception #{e}"
-      $logger.error e.backtrace.join("\n")
-      exit
-    ensure
-      $logger.info "closing tcp server"
-      server.close
     end
   end
 end
 
-Ambient.start
+  Ambient.start
