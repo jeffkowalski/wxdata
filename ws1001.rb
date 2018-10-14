@@ -5,7 +5,7 @@ require 'socket'
 require 'influxdb'
 include Socket::Constants
 
-LOGFILE = File.join(Dir.home, '.log', '.ws1001.log')
+LOGFILE = File.join(Dir.home, '.log', 'ws1001.log')
 
 UDPPORT = 6000 # udp port	# broadcast message port
 BCMSG   = File.read("./msg-udp-srch.dat")
