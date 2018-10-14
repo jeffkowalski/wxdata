@@ -12,8 +12,8 @@ BCMSG   = File.read("./msg-udp-srch.dat")
 TCPPORT = 6500	# tcp port	# console connection
 SNDMSG  = File.read("./msg-tcp-nowrec-req.dat")
 FIELDS = [
-  {:name => "HP_HEAD"             , :pack =>  'A8'},  #  0
-  {:name => "HP_CMD"              , :pack =>  'A8'},  #  1
+  {:name => "HP_HEAD"             , :pack =>  'Z8'},  #  0
+  {:name => "HP_CMD"              , :pack =>  'Z8'},  #  1
   {:name => "HP_TABLE"            , :pack => 'Z16'},  #  2
   {:name => "field3"              , :pack =>   'S'},  #  3
   {:name => "field4"              , :pack =>   'C'},  #  4
