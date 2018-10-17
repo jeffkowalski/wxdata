@@ -12,32 +12,35 @@ BCMSG   = File.read("./msg-udp-srch.dat")
 TCPPORT = 6500	# tcp port	# console connection
 SNDMSG  = File.read("./msg-tcp-nowrec-req.dat")
 FIELDS = [
-  {:name => "HP_HEAD"             , :pack =>  'Z8'},  #  0
-  {:name => "HP_CMD"              , :pack =>  'Z8'},  #  1
-  {:name => "HP_TABLE"            , :pack => 'Z16'},  #  2
-  {:name => "field3"              , :pack =>   'S'},  #  3
-  {:name => "field4"              , :pack =>   'C'},  #  4
-  {:name => "field5"              , :pack =>   'I'},  #  5
-  {:name => "field6"              , :pack =>   'C'},  #  6
-  {:name => "wind_direction"      , :pack =>   'S'},  #  7
-  {:name => "humidity_indoor"     , :pack =>   'C'},  #  8
-  {:name => "humidity_outdoor"    , :pack =>   'C'},  #  9
-  {:name => "temperature_indoor"  , :pack =>   'f'},  # 10
-  {:name => "field11"             , :pack =>   'f'},  # 11
-  {:name => "barometer"           , :pack =>   'f'},  # 12
-  {:name => "temperature outdoor" , :pack =>   'f'},  # 13
-  {:name => "dewpoint"            , :pack =>   'f'},  # 14
-  {:name => "windchill"           , :pack =>   'f'},  # 15
-  {:name => "wind_average"        , :pack =>   'f'},  # 16
-  {:name => "wind_gust"           , :pack =>   'f'},  # 17
-  {:name => "rain_hourly"         , :pack =>   'f'},  # 18
-  {:name => "rain_daily"          , :pack =>   'f'},  # 19
-  {:name => "rain_weekly"         , :pack =>   'f'},  # 20
-  {:name => "rain_monthly"        , :pack =>   'f'},  # 21
-  {:name => "rain_yearly"         , :pack =>   'f'},  # 22
-  {:name => "solar_radiation"     , :pack =>   'f'},  # 23
-  {:name => "uv_index"            , :pack =>   'C'},  # 24
-  {:name => "field25"             , :pack =>   'C'},  # 25
+                                                      #  ord size
+  {:name => "HP_HEAD"             , :pack =>  'Z8'},  #    0    8
+  {:name => "HP_CMD"              , :pack =>  'Z8'},  #    1    8
+  {:name => "HP_TABLE"            , :pack => 'Z16'},  #    2   16
+  {:name => "field3"              , :pack =>   'S'},  #    3    2   probably HP_LEN
+  {:name => "field4"              , :pack =>   'C'},  #    4    1   could be part of len
+  {:name => "field5"              , :pack =>   'I'},  #    5    4   probably HP_CRC
+  {:name => "field6"              , :pack =>   'C'},  #    6    1   could be part of crc
+  {:name => "wind_direction"      , :pack =>   'S'},  #    7    2
+  {:name => "humidity_indoor"     , :pack =>   'C'},  #    8    1
+  {:name => "humidity_outdoor"    , :pack =>   'C'},  #    9    1
+  {:name => "temperature_indoor"  , :pack =>   'f'},  #   10    4
+  {:name => "pressure_absolute"   , :pack =>   'f'},  #   11    4
+  {:name => "pressure_relative"   , :pack =>   'f'},  #   12    4
+  {:name => "temperature outdoor" , :pack =>   'f'},  #   13    4
+  {:name => "dewpoint"            , :pack =>   'f'},  #   14    4
+  {:name => "windchill"           , :pack =>   'f'},  #   15    4
+  {:name => "wind_average"        , :pack =>   'f'},  #   16    4
+  {:name => "wind_gust"           , :pack =>   'f'},  #   17    4
+  {:name => "rain_hourly"         , :pack =>   'f'},  #   18    4
+  {:name => "rain_daily"          , :pack =>   'f'},  #   19    4
+  {:name => "rain_weekly"         , :pack =>   'f'},  #   20    4
+  {:name => "rain_monthly"        , :pack =>   'f'},  #   21    4
+  {:name => "rain_yearly"         , :pack =>   'f'},  #   22    4
+  {:name => "solar_radiation"     , :pack =>   'f'},  #   23    4
+  {:name => "uv_index"            , :pack =>   'C'},  #   24    1
+  {:name => "field25"             , :pack =>   'C'},  #   25    1    heat index or soil?
+  {:name => "field26"             , :pack =>   'S'},  #   26    2    heat index or soil?
+                                                      # total 104
 ]
 
 
@@ -115,9 +118,11 @@ class WS1001 < Thor
           rcvmsg = client_socket.read
           timestamp = Time.now.to_i
 
+          File.open("/tmp/nowrecord", "w") { |file| file.write(rcvmsg) }
+
           # Unpack NOWRECORD message received from console
           packing = (FIELDS.collect { |field| field[:pack] }).join ''
-          $logger.info "unpacking '#{packing}" # c.f. "A8 A8 Z16 S C I C S C2 f14 C2"
+          $logger.info "unpacking #{packing}" # c.f. "A8 A8 Z16 S C I C S C2 f14 C2"
           msgcontent = rcvmsg.unpack packing
 
           (0..FIELDS.length-1).each { |index|
