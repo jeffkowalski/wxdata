@@ -8,38 +8,36 @@ include Socket::Constants
 LOGFILE = File.join(Dir.home, '.log', 'ws1001.log')
 
 UDPPORT = 6000 # udp port	# broadcast message port
-BCMSG   = File.read("./msg-udp-srch.dat")
+BCMSG   = ['PC2000', 'SEARCH', '', 0, 0].pack 'Z8 Z8 Z16 I I'
 TCPPORT = 6500	# tcp port	# console connection
-SNDMSG  = File.read("./msg-tcp-nowrec-req.dat")
-FIELDS = [
+SNDMSG  = ['PC2000', 'READ',   'NOWRECORD', 0, 0].pack 'Z8 Z8 Z16 I I'
+FIELDS  = [
                                                       #  ord size
   {:name => "HP_HEAD"             , :pack =>  'Z8'},  #    0    8
   {:name => "HP_CMD"              , :pack =>  'Z8'},  #    1    8
   {:name => "HP_TABLE"            , :pack => 'Z16'},  #    2   16
-  {:name => "field3"              , :pack =>   'S'},  #    3    2   probably HP_LEN
-  {:name => "field4"              , :pack =>   'C'},  #    4    1   could be part of len
-  {:name => "field5"              , :pack =>   'I'},  #    5    4   probably HP_CRC
-  {:name => "field6"              , :pack =>   'C'},  #    6    1   could be part of crc
-  {:name => "wind_direction"      , :pack =>   'S'},  #    7    2
-  {:name => "humidity_indoor"     , :pack =>   'C'},  #    8    1
-  {:name => "humidity_outdoor"    , :pack =>   'C'},  #    9    1
-  {:name => "temperature_indoor"  , :pack =>   'f'},  #   10    4
-  {:name => "pressure_absolute"   , :pack =>   'f'},  #   11    4
-  {:name => "pressure_relative"   , :pack =>   'f'},  #   12    4
-  {:name => "temperature outdoor" , :pack =>   'f'},  #   13    4
-  {:name => "dewpoint"            , :pack =>   'f'},  #   14    4
-  {:name => "windchill"           , :pack =>   'f'},  #   15    4
-  {:name => "wind_average"        , :pack =>   'f'},  #   16    4
-  {:name => "wind_gust"           , :pack =>   'f'},  #   17    4
-  {:name => "rain_hourly"         , :pack =>   'f'},  #   18    4
-  {:name => "rain_daily"          , :pack =>   'f'},  #   19    4
-  {:name => "rain_weekly"         , :pack =>   'f'},  #   20    4
-  {:name => "rain_monthly"        , :pack =>   'f'},  #   21    4
-  {:name => "rain_yearly"         , :pack =>   'f'},  #   22    4
-  {:name => "solar_radiation"     , :pack =>   'f'},  #   23    4
-  {:name => "uv_index"            , :pack =>   'C'},  #   24    1
-  {:name => "field25"             , :pack =>   'C'},  #   25    1    heat index or soil?
-  {:name => "field26"             , :pack =>   'S'},  #   26    2    heat index or soil?
+  {:name => "HP_LEN"              , :pack =>   'I'},  #    3    4   probably HP_LEN
+  {:name => "HP_CRC"              , :pack =>   'I'},  #    4    4   could be part of len
+  {:name => "wind_direction"      , :pack =>   'S'},  #    5    2
+  {:name => "humidity_indoor"     , :pack =>   'C'},  #    6    1
+  {:name => "humidity_outdoor"    , :pack =>   'C'},  #    7    1
+  {:name => "temperature_indoor"  , :pack =>   'f'},  #    8    4
+  {:name => "pressure_absolute"   , :pack =>   'f'},  #    9    4
+  {:name => "pressure_relative"   , :pack =>   'f'},  #   10    4
+  {:name => "temperature outdoor" , :pack =>   'f'},  #   11    4
+  {:name => "dewpoint"            , :pack =>   'f'},  #   12    4
+  {:name => "windchill"           , :pack =>   'f'},  #   13    4
+  {:name => "wind_average"        , :pack =>   'f'},  #   14    4
+  {:name => "wind_gust"           , :pack =>   'f'},  #   15    4
+  {:name => "rain_hourly"         , :pack =>   'f'},  #   16    4
+  {:name => "rain_daily"          , :pack =>   'f'},  #   17    4
+  {:name => "rain_weekly"         , :pack =>   'f'},  #   28    4
+  {:name => "rain_monthly"        , :pack =>   'f'},  #   29    4
+  {:name => "rain_yearly"         , :pack =>   'f'},  #   20    4
+  {:name => "solar_radiation"     , :pack =>   'f'},  #   21    4
+  {:name => "uv_index"            , :pack =>   'C'},  #   22    1
+  {:name => "field25"             , :pack =>   'C'},  #   23    1    heat index or soil? typically 255
+  {:name => "field26"             , :pack =>   'S'},  #   24    2    heat index or soil? typically 0
                                                       # total 104
 ]
 
