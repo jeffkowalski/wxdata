@@ -10,7 +10,6 @@ GEM
     pry-doc (0.13.4)
       pry (~> 0.11)
       yard (~> 0.9.11)
-    tcp_timeout (0.1.1)
     thor (0.20.0)
     yard (0.9.16)
 
@@ -22,8 +21,7 @@ DEPENDENCIES
   method_source (>= 0.8.2)
   pry
   pry-doc (>= 0.6.0)
-  tcp_timeout
   thor
 
 BUNDLED WITH
-   1.16.6
+   1.17.1
