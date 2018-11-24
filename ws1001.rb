@@ -65,7 +65,7 @@ class WS1001 < Thor
     end
   end
 
-  class_option :log,     type: :boolean, default: true, desc: 'log output to ~/.ws1001.log'
+  class_option :log,     type: :boolean, default: true, desc: "log output to #{LOGFILE}"
   class_option :verbose, type: :boolean, aliases: '-v', desc: 'increase verbosity'
 
   desc 'record-status', 'record the current usage data to database'
