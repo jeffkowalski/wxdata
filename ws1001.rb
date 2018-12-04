@@ -59,9 +59,9 @@ class WS1001 < Thor
     def setup_logger
       redirect_output if options[:log]
 
-      $logger = Logger.new STDOUT
-      $logger.level = options[:verbose] ? Logger::DEBUG : Logger::INFO
-      $logger.info 'starting'
+      @logger = Logger.new STDOUT
+      @logger.level = options[:verbose] ? Logger::DEBUG : Logger::INFO
+      @logger.info 'starting'
     end
   end
 
@@ -74,20 +74,20 @@ class WS1001 < Thor
   def record_status
     setup_logger
 
-    $logger.info 'opening udp socket'
+    @logger.info 'opening udp socket'
     udpsock = UDPSocket.new
     begin
       udpsock.setsockopt Socket::SOL_SOCKET, Socket::SO_BROADCAST, true
-      $logger.info "sending broadcast to #{options[:station]} on port #{UDPPORT}"
+      @logger.info "sending broadcast to #{options[:station]} on port #{UDPPORT}"
       udpsock.send BCMSG, 0, options[:station], UDPPORT
     rescue StandardError => e
-      $logger.error "caught exception #{e}"
-      $logger.error e.backtrace.join("\n")
+      @logger.error "caught exception #{e}"
+      @logger.error e.backtrace.join("\n")
     else
       begin
         addr = Socket.ip_address_list.detect(&:ipv4_private?).ip_address
         sockaddr = Socket.sockaddr_in TCPPORT, addr
-        $logger.info "opening server on port #{addr}:#{TCPPORT}"
+        @logger.info "opening server on port #{addr}:#{TCPPORT}"
         server = Socket.new Socket::AF_INET, Socket::SOCK_STREAM, 0
         timeval = [90, 0].pack 'l_2' # 90 seconds
         server.setsockopt Socket::SOL_SOCKET, Socket::SO_RCVTIMEO, timeval
@@ -96,23 +96,26 @@ class WS1001 < Thor
         server.listen 5
         tries = 0
         begin
-          $logger.info "waiting for connection on port #{TCPPORT}"
+          @logger.info "waiting for connection on port #{TCPPORT}"
           client_socket, client_sockaddr = server.accept_nonblock
-        rescue Errno::EAGAIN, Errno::ECONNABORTED, Errno::EINTR, Errno::EWOULDBLOCK => e
-          $logger.info "handling benign exception: #{e}"
+        rescue Errno::EAGAIN,
+               Errno::ECONNABORTED,
+               Errno::EINTR,
+               Errno::EWOULDBLOCK => e
+          @logger.info "handling benign exception: #{e}"
           IO.select([server], nil, nil, 10) # 10 second timeout
           if (tries += 1) > 6
-            $logger.info "too many tries #{tries}, exiting"
+            @logger.info "too many tries #{tries}, exiting"
             exit
           end
-          $logger.info "retrying #{tries}"
+          @logger.info "retrying #{tries}"
           retry
         else
-          $logger.info "accepted connection from #{client_sockaddr.ip_unpack.join(':')}"
+          @logger.info "accepted connection from #{client_sockaddr.ip_unpack.join(':')}"
           sleep 2
-          $logger.info 'sending request'
+          @logger.info 'sending request'
           client_socket.write SNDMSG
-          $logger.info 'awaiting response'
+          @logger.info 'awaiting response'
           rcvmsg = client_socket.read
           timestamp = Time.now.to_i
 
@@ -120,11 +123,11 @@ class WS1001 < Thor
 
           # Unpack NOWRECORD message received from console
           packing = (FIELDS.collect { |field| field[:pack] }).join ''
-          $logger.info "unpacking #{packing}"
+          @logger.info "unpacking #{packing}"
           msgcontent = rcvmsg.unpack packing
 
           (0..FIELDS.length - 1).each do |index|
-            $logger.info FIELDS[index][:name].ljust(21) +
+            @logger.info FIELDS[index][:name].ljust(21) +
                          msgcontent[index].class.to_s.ljust(10) +
                          msgcontent[index].to_s
           end
@@ -135,22 +138,22 @@ class WS1001 < Thor
             influxdb.write_point FIELDS[index][:name], data unless msgcontent[index].nil?
           end
         ensure
-          $logger.info 'closing client connection'
+          @logger.info 'closing client connection'
           client_socket.close unless client_socket.nil?
         end
       rescue StandardError => e
-        $logger.error "caught exception #{e}"
-        $logger.error e.backtrace.join("\n")
+        @logger.error "caught exception #{e}"
+        @logger.error e.backtrace.join("\n")
         exit
       ensure
-        $logger.info 'closing server'
+        @logger.info 'closing server'
         server.close unless server.nil?
       end
     ensure
-      $logger.info 'closing udp socket'
+      @logger.info 'closing udp socket'
       udpsock.close unless udpsock.nil?
 
-      $logger.info 'done'
+      @logger.info 'done'
     end
   end
 end
