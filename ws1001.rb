@@ -25,7 +25,7 @@ FIELDS  = [
   { pack: 'f',   name: 'temperature_indoor' },  #    8    4
   { pack: 'f',   name: 'pressure_absolute' },   #    9    4
   { pack: 'f',   name: 'pressure_relative' },   #   10    4
-  { pack: 'f',   name: 'temperature outdoor' }, #   11    4
+  { pack: 'f',   name: 'temperature_outdoor' }, #   11    4
   { pack: 'f',   name: 'dewpoint' },            #   12    4
   { pack: 'f',   name: 'windchill' },           #   13    4
   { pack: 'f',   name: 'wind_average' },        #   14    4
