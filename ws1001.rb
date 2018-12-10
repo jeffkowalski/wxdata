@@ -13,32 +13,32 @@ BCMSG   = ['PC2000', 'SEARCH', '', 0, 0].pack 'Z8 Z8 Z16 I I'
 TCPPORT = 6500 # tcp port  # console connection
 SNDMSG  = ['PC2000', 'READ', 'NOWRECORD', 0, 0].pack 'Z8 Z8 Z16 I I'
 FIELDS  = [
-  #  ord size
-  { pack: 'Z8',  name: 'HP_HEAD' },             #    0    8
-  { pack: 'Z8',  name: 'HP_CMD' },              #    1    8
-  { pack: 'Z16', name: 'HP_TABLE' },            #    2   16
-  { pack: 'I',   name: 'HP_LEN' },              #    3    4    maybe?
-  { pack: 'I',   name: 'HP_CRC' },              #    4    4    maybe?
-  { pack: 'S',   name: 'wind_direction' },      #    5    2
-  { pack: 'C',   name: 'humidity_indoor' },     #    6    1
-  { pack: 'C',   name: 'humidity_outdoor' },    #    7    1
-  { pack: 'f',   name: 'temperature_indoor' },  #    8    4
-  { pack: 'f',   name: 'pressure_absolute' },   #    9    4
-  { pack: 'f',   name: 'pressure_relative' },   #   10    4
-  { pack: 'f',   name: 'temperature_outdoor' }, #   11    4
-  { pack: 'f',   name: 'dewpoint' },            #   12    4
-  { pack: 'f',   name: 'windchill' },           #   13    4
-  { pack: 'f',   name: 'wind_average' },        #   14    4
-  { pack: 'f',   name: 'wind_gust' },           #   15    4
-  { pack: 'f',   name: 'rain_hourly' },         #   16    4
-  { pack: 'f',   name: 'rain_daily' },          #   17    4
-  { pack: 'f',   name: 'rain_weekly' },         #   28    4
-  { pack: 'f',   name: 'rain_monthly' },        #   29    4
-  { pack: 'f',   name: 'rain_yearly' },         #   20    4
-  { pack: 'f',   name: 'solar_radiation' },     #   21    4
-  { pack: 'C',   name: 'uv_index' },            #   22    1
-  { pack: 'C',   name: 'field25' },             #   23    1    heat index or soil? typically 255
-  { pack: 'S',   name: 'field26' },             #   24    2    heat index or soil? typically 0
+  #                                                                                                  ord size
+  { pack: 'Z8',  name: 'HP_HEAD' },                                                              #    0    8
+  { pack: 'Z8',  name: 'HP_CMD' },                                                               #    1    8
+  { pack: 'Z16', name: 'HP_TABLE' },                                                             #    2   16
+  { pack: 'I',   name: 'HP_LEN' },                                                               #    3    4    maybe?
+  { pack: 'I',   name: 'HP_CRC' },                                                               #    4    4    maybe?
+  { pack: 'S',   name: 'wind_direction',      validator: lambda { |v| v.between?(  0,  360) } }, #    5    2
+  { pack: 'C',   name: 'humidity_indoor',     validator: lambda { |v| v.between?(  0,  100) } }, #    6    1
+  { pack: 'C',   name: 'humidity_outdoor',    validator: lambda { |v| v.between?(  0,  100) } }, #    7    1
+  { pack: 'f',   name: 'temperature_indoor',  validator: lambda { |v| v.between?(-99, 1000) } }, #    8    4
+  { pack: 'f',   name: 'pressure_absolute',   validator: lambda { |v| v.between?( 10,   40) } }, #    9    4
+  { pack: 'f',   name: 'pressure_relative',   validator: lambda { |v| v.between?( 10,   40) } }, #   10    4
+  { pack: 'f',   name: 'temperature_outdoor', validator: lambda { |v| v.between?(-99, 1000) } }, #   11    4
+  { pack: 'f',   name: 'dewpoint',            validator: lambda { |v| v.between?(-99, 1000) } }, #   12    4
+  { pack: 'f',   name: 'windchill',           validator: lambda { |v| v.between?(-99, 1000) } }, #   13    4
+  { pack: 'f',   name: 'wind_average',        validator: lambda { |v| v.between?(  0, 1000) } }, #   14    4
+  { pack: 'f',   name: 'wind_gust',           validator: lambda { |v| v.between?(  0, 1000) } }, #   15    4
+  { pack: 'f',   name: 'rain_hourly',         validator: lambda { |v| v.between?(  0, 1000) } }, #   16    4
+  { pack: 'f',   name: 'rain_daily',          validator: lambda { |v| v.between?(  0, 1000) } }, #   17    4
+  { pack: 'f',   name: 'rain_weekly',         validator: lambda { |v| v.between?(  0, 1000) } }, #   28    4
+  { pack: 'f',   name: 'rain_monthly',        validator: lambda { |v| v.between?(  0, 1000) } }, #   29    4
+  { pack: 'f',   name: 'rain_yearly',         validator: lambda { |v| v.between?(  0, 1000) } }, #   20    4
+  { pack: 'f',   name: 'solar_radiation',     validator: lambda { |v| v.between?(  0,10000) } }, #   21    4
+  { pack: 'C',   name: 'uv_index',            validator: lambda { |v| v.between?(  0,  100) } }, #   22    1
+  { pack: 'C',   name: 'field25' },                                                              #   23    1    heat index or soil? typically 255
+  { pack: 'S',   name: 'field26' },                                                              #   24    2    heat index or soil? typically 0
   # total 104
 ].freeze
 
@@ -134,8 +134,13 @@ class WS1001 < Thor
 
           influxdb = InfluxDB::Client.new 'wxdata'
           (0..FIELDS.length - 1).each do |index|
-            data = { values: { value: msgcontent[index] }, timestamp: timestamp }
-            influxdb.write_point FIELDS[index][:name], data unless msgcontent[index].nil?
+            value = msgcontent[index]
+            if !FIELDS[index].key?(:validator) || FIELDS[index][:validator].(value)
+              data = { values: { value: value }, timestamp: timestamp }
+              influxdb.write_point FIELDS[index][:name], data unless value.nil?
+            else
+              @logger.warn "#{FIELDS[index][:name]} #{value} is out of valid range"
+            end
           end
         ensure
           @logger.info 'closing client connection'
