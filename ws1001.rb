@@ -1,4 +1,5 @@
 #!/usr/bin/env ruby
+# frozen_string_literal:true
 
 require 'thor'
 require 'fileutils'
@@ -12,6 +13,7 @@ UDPPORT = 6000 # udp port  # broadcast message port
 BCMSG   = ['PC2000', 'SEARCH', '', 0, 0].pack 'Z8 Z8 Z16 I I'
 TCPPORT = 6500 # tcp port  # console connection
 SNDMSG  = ['PC2000', 'READ', 'NOWRECORD', 0, 0].pack 'Z8 Z8 Z16 I I'
+# rubocop: disable Layout/ExtraSpacing, Layout/SpaceInsideParens, Style/NumericLiterals
 FIELDS  = [
   #                                                                                                  ord size
   { pack: 'Z8',  name: 'HP_HEAD' },                                                              #    0    8
@@ -19,28 +21,29 @@ FIELDS  = [
   { pack: 'Z16', name: 'HP_TABLE' },                                                             #    2   16
   { pack: 'I',   name: 'HP_LEN' },                                                               #    3    4    maybe?
   { pack: 'I',   name: 'HP_CRC' },                                                               #    4    4    maybe?
-  { pack: 'S',   name: 'wind_direction',      validator: lambda { |v| v.between?(  0,  360) } }, #    5    2
-  { pack: 'C',   name: 'humidity_indoor',     validator: lambda { |v| v.between?(  0,  100) } }, #    6    1
-  { pack: 'C',   name: 'humidity_outdoor',    validator: lambda { |v| v.between?(  0,  100) } }, #    7    1
-  { pack: 'f',   name: 'temperature_indoor',  validator: lambda { |v| v.between?(-99, 1000) } }, #    8    4
-  { pack: 'f',   name: 'pressure_absolute',   validator: lambda { |v| v.between?( 10,   40) } }, #    9    4
-  { pack: 'f',   name: 'pressure_relative',   validator: lambda { |v| v.between?( 10,   40) } }, #   10    4
-  { pack: 'f',   name: 'temperature_outdoor', validator: lambda { |v| v.between?(-99, 1000) } }, #   11    4
-  { pack: 'f',   name: 'dewpoint',            validator: lambda { |v| v.between?(-99, 1000) } }, #   12    4
-  { pack: 'f',   name: 'windchill',           validator: lambda { |v| v.between?(-99, 1000) } }, #   13    4
-  { pack: 'f',   name: 'wind_average',        validator: lambda { |v| v.between?(  0, 1000) } }, #   14    4
-  { pack: 'f',   name: 'wind_gust',           validator: lambda { |v| v.between?(  0, 1000) } }, #   15    4
-  { pack: 'f',   name: 'rain_hourly',         validator: lambda { |v| v.between?(  0, 1000) } }, #   16    4
-  { pack: 'f',   name: 'rain_daily',          validator: lambda { |v| v.between?(  0, 1000) } }, #   17    4
-  { pack: 'f',   name: 'rain_weekly',         validator: lambda { |v| v.between?(  0, 1000) } }, #   28    4
-  { pack: 'f',   name: 'rain_monthly',        validator: lambda { |v| v.between?(  0, 1000) } }, #   29    4
-  { pack: 'f',   name: 'rain_yearly',         validator: lambda { |v| v.between?(  0, 1000) } }, #   20    4
-  { pack: 'f',   name: 'solar_radiation',     validator: lambda { |v| v.between?(  0,10000) } }, #   21    4
-  { pack: 'C',   name: 'uv_index',            validator: lambda { |v| v.between?(  0,  100) } }, #   22    1
+  { pack: 'S',   name: 'wind_direction',      validator: ->(v) { v.between?(  0,   360) } },     #    5    2
+  { pack: 'C',   name: 'humidity_indoor',     validator: ->(v) { v.between?(  0,   100) } },     #    6    1
+  { pack: 'C',   name: 'humidity_outdoor',    validator: ->(v) { v.between?(  0,   100) } },     #    7    1
+  { pack: 'f',   name: 'temperature_indoor',  validator: ->(v) { v.between?(-99,  1000) } },     #    8    4
+  { pack: 'f',   name: 'pressure_absolute',   validator: ->(v) { v.between?( 10,    40) } },     #    9    4
+  { pack: 'f',   name: 'pressure_relative',   validator: ->(v) { v.between?( 10,    40) } },     #   10    4
+  { pack: 'f',   name: 'temperature_outdoor', validator: ->(v) { v.between?(-99,  1000) } },     #   11    4
+  { pack: 'f',   name: 'dewpoint',            validator: ->(v) { v.between?(-99,  1000) } },     #   12    4
+  { pack: 'f',   name: 'windchill',           validator: ->(v) { v.between?(-99,  1000) } },     #   13    4
+  { pack: 'f',   name: 'wind_average',        validator: ->(v) { v.between?(  0,  1000) } },     #   14    4
+  { pack: 'f',   name: 'wind_gust',           validator: ->(v) { v.between?(  0,  1000) } },     #   15    4
+  { pack: 'f',   name: 'rain_hourly',         validator: ->(v) { v.between?(  0,  1000) } },     #   16    4
+  { pack: 'f',   name: 'rain_daily',          validator: ->(v) { v.between?(  0,  1000) } },     #   17    4
+  { pack: 'f',   name: 'rain_weekly',         validator: ->(v) { v.between?(  0,  1000) } },     #   28    4
+  { pack: 'f',   name: 'rain_monthly',        validator: ->(v) { v.between?(  0,  1000) } },     #   29    4
+  { pack: 'f',   name: 'rain_yearly',         validator: ->(v) { v.between?(  0,  1000) } },     #   20    4
+  { pack: 'f',   name: 'solar_radiation',     validator: ->(v) { v.between?(  0, 10000) } },     #   21    4
+  { pack: 'C',   name: 'uv_index',            validator: ->(v) { v.between?(  0,   100) } },     #   22    1
   { pack: 'C',   name: 'field25' },                                                              #   23    1    heat index or soil? typically 255
-  { pack: 'S',   name: 'field26' },                                                              #   24    2    heat index or soil? typically 0
+  { pack: 'S',   name: 'field26' }                                                               #   24    2    heat index or soil? typically 0
   # total 104
 ].freeze
+# rubocop: enable Layout/ExtraSpacing, Layout/SpaceInsideParens, Style/NumericLiterals
 
 class WS1001 < Thor
   no_commands do
@@ -70,7 +73,6 @@ class WS1001 < Thor
 
   desc 'record-status', 'record the current usage data to database'
   option :station, type: :string, default: '<broadcast>', desc: 'ip addr of weather station'
-
   def record_status
     setup_logger
 
@@ -135,7 +137,7 @@ class WS1001 < Thor
           influxdb = InfluxDB::Client.new 'wxdata'
           (0..FIELDS.length - 1).each do |index|
             value = msgcontent[index]
-            if !FIELDS[index].key?(:validator) || FIELDS[index][:validator].(value)
+            if !FIELDS[index].key?(:validator) || FIELDS[index][:validator].call(value)
               data = { values: { value: value }, timestamp: timestamp }
               influxdb.write_point FIELDS[index][:name], data unless value.nil?
             else
@@ -144,7 +146,7 @@ class WS1001 < Thor
           end
         ensure
           @logger.info 'closing client connection'
-          client_socket.close unless client_socket.nil?
+          client_socket&.close
         end
       rescue StandardError => e
         @logger.error "caught exception #{e}"
@@ -152,11 +154,11 @@ class WS1001 < Thor
         exit
       ensure
         @logger.info 'closing server'
-        server.close unless server.nil?
+        server&.close
       end
     ensure
       @logger.info 'closing udp socket'
-      udpsock.close unless udpsock.nil?
+      udpsock&.close
 
       @logger.info 'done'
     end
