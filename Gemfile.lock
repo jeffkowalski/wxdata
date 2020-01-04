@@ -11,7 +11,7 @@ GEM
       pry (~> 0.11)
       yard (~> 0.9.11)
     thor (1.0.1)
-    yard (0.9.20)
+    yard (0.9.22)
 
 PLATFORMS
   ruby
@@ -24,4 +24,4 @@ DEPENDENCIES
   thor
 
 BUNDLED WITH
-   2.1.2
+   2.1.3
