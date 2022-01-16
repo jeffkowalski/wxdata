@@ -107,7 +107,7 @@ class WS1001 < Thor
           @logger.info "handling benign exception: #{e}"
           IO.select([server], nil, nil, 10) # 10 second timeout
           if (tries += 1) > 6
-            @logger.info "too many tries #{tries}, exiting"
+            @logger.error "too many tries #{tries}, exiting"
             exit
           end
           @logger.info "retrying #{tries}"
