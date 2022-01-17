@@ -9,6 +9,21 @@ require 'influxdb'
 
 LOGFILE = File.join(Dir.home, '.log', 'ws1001.log')
 
+module Kernel
+  def with_rescue(exceptions, logger, retries: 5)
+    try = 0
+    begin
+      yield try
+    rescue *exceptions => e
+      try += 1
+      raise if try > retries
+
+      logger.info "caught error #{e.class}, retrying (#{try}/#{retries})..."
+      retry
+    end
+  end
+end
+
 UDPPORT = 6000 # udp port  # broadcast message port
 BCMSG   = ['PC2000', 'SEARCH', '', 0, 0].pack 'Z8 Z8 Z16 I I'
 TCPPORT = 6500 # tcp port  # console connection
@@ -62,7 +77,7 @@ class WS1001 < Thor
     def setup_logger
       redirect_output if options[:log]
 
-      @logger = Logger.new STDOUT
+      @logger = Logger.new $stdout
       @logger.level = options[:verbose] ? Logger::DEBUG : Logger::INFO
       @logger.info 'starting'
     end
@@ -96,23 +111,16 @@ class WS1001 < Thor
         server.setsockopt Socket::SOL_SOCKET, Socket::SO_SNDTIMEO, timeval
         server.bind sockaddr
         server.listen 5
-        tries = 0
+        IO.select([server], nil, nil, 10) # 10 second timeout
+
+        @logger.info "waiting for connection on port #{TCPPORT}"
+        client_socket, client_sockaddr = with_rescue([Errno::EAGAIN,
+                                Errno::ECONNABORTED,
+                                Errno::EINTR,
+                                Errno::EWOULDBLOCK], @logger) do |_try|
+          server.accept_nonblock
+        end
         begin
-          @logger.info "waiting for connection on port #{TCPPORT}"
-          client_socket, client_sockaddr = server.accept_nonblock
-        rescue Errno::EAGAIN,
-               Errno::ECONNABORTED,
-               Errno::EINTR,
-               Errno::EWOULDBLOCK => e
-          @logger.info "handling benign exception: #{e}"
-          IO.select([server], nil, nil, 10) # 10 second timeout
-          if (tries += 1) > 6
-            @logger.error "too many tries #{tries}, exiting"
-            exit
-          end
-          @logger.info "retrying #{tries}"
-          retry
-        else
           @logger.info "accepted connection from #{client_sockaddr.ip_unpack.join(':')}"
           sleep 2
           @logger.info 'sending request'
