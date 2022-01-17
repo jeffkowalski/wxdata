@@ -86,90 +86,92 @@ class WS1001 < Thor
   class_option :log,     type: :boolean, default: true, desc: "log output to #{LOGFILE}"
   class_option :verbose, type: :boolean, aliases: '-v', desc: 'increase verbosity'
 
+  no_commands do
+    def query_panel(verb)
+      @logger.info 'opening udp socket'
+      udpsock = UDPSocket.new
+      udpsock.setsockopt Socket::SOL_SOCKET, Socket::SO_BROADCAST, true
+
+      with_rescue([Errno::EAGAIN,
+                   Errno::ECONNABORTED,
+                   Errno::EINTR,
+                   Errno::EWOULDBLOCK], @logger) do |_try|
+        @logger.info "sending broadcast to #{options[:station]} on port #{UDPPORT}"
+        udpsock.send BCMSG, 0, options[:station], UDPPORT
+
+        begin
+          addr = Socket.ip_address_list.detect(&:ipv4_private?).ip_address
+          sockaddr = Socket.sockaddr_in TCPPORT, addr
+          @logger.info "opening server on port #{addr}:#{TCPPORT}"
+          server = Socket.new Socket::AF_INET, Socket::SOCK_STREAM, 0
+          timeval = [90, 0].pack 'l_2' # 90 seconds
+          server.setsockopt Socket::SOL_SOCKET, Socket::SO_RCVTIMEO, timeval
+          server.setsockopt Socket::SOL_SOCKET, Socket::SO_SNDTIMEO, timeval
+          server.bind sockaddr
+          server.listen 5
+
+          @logger.info "waiting for connection on port #{TCPPORT}"
+          with_rescue([Errno::EAGAIN,
+                       Errno::ECONNABORTED,
+                       Errno::EINTR,
+                       Errno::EWOULDBLOCK], @logger) do |_try2|
+            IO.select([server], nil, nil, 10) # 10 second timeout
+            client_socket, client_sockaddr = server.accept_nonblock
+            @logger.info "accepted connection from #{client_sockaddr.ip_unpack.join(':')}"
+            sleep 2
+            @logger.info 'sending request'
+            client_socket.write verb
+            @logger.info 'awaiting response'
+            client_socket.read # return
+          ensure
+            @logger.info 'closing client connection'
+            client_socket&.close
+          end
+        ensure
+          @logger.info 'closing server'
+          server&.close
+        end
+      end
+    ensure
+      @logger.info 'closing udp socket'
+      udpsock&.close
+    end
+  end
+
   desc 'record-status', 'record the current usage data to database'
   option :station, type: :string, default: '<broadcast>', desc: 'ip addr of weather station'
   def record_status
     setup_logger
 
-    @logger.info 'opening udp socket'
-    udpsock = UDPSocket.new
-    begin
-      udpsock.setsockopt Socket::SOL_SOCKET, Socket::SO_BROADCAST, true
-      @logger.info "sending broadcast to #{options[:station]} on port #{UDPPORT}"
-      udpsock.send BCMSG, 0, options[:station], UDPPORT
-    rescue StandardError => e
-      @logger.error "caught exception #{e}"
-      @logger.error e.backtrace.join("\n")
-    else
-      begin
-        addr = Socket.ip_address_list.detect(&:ipv4_private?).ip_address
-        sockaddr = Socket.sockaddr_in TCPPORT, addr
-        @logger.info "opening server on port #{addr}:#{TCPPORT}"
-        server = Socket.new Socket::AF_INET, Socket::SOCK_STREAM, 0
-        timeval = [90, 0].pack 'l_2' # 90 seconds
-        server.setsockopt Socket::SOL_SOCKET, Socket::SO_RCVTIMEO, timeval
-        server.setsockopt Socket::SOL_SOCKET, Socket::SO_SNDTIMEO, timeval
-        server.bind sockaddr
-        server.listen 5
-        IO.select([server], nil, nil, 10) # 10 second timeout
+    rcvmsg = query_panel(SNDMSG)
+    timestamp = Time.now.to_i
+    File.open('/tmp/nowrecord', 'w') { |file| file.write(rcvmsg) }
 
-        @logger.info "waiting for connection on port #{TCPPORT}"
-        client_socket, client_sockaddr = with_rescue([Errno::EAGAIN,
-                                Errno::ECONNABORTED,
-                                Errno::EINTR,
-                                Errno::EWOULDBLOCK], @logger) do |_try|
-          server.accept_nonblock
-        end
-        begin
-          @logger.info "accepted connection from #{client_sockaddr.ip_unpack.join(':')}"
-          sleep 2
-          @logger.info 'sending request'
-          client_socket.write SNDMSG
-          @logger.info 'awaiting response'
-          rcvmsg = client_socket.read
-          timestamp = Time.now.to_i
+    # Unpack NOWRECORD message received from console
+    packing = (FIELDS.collect { |field| field[:pack] }).join ''
+    @logger.info "unpacking #{packing}"
+    msgcontent = rcvmsg.unpack packing
 
-          File.open('/tmp/nowrecord', 'w') { |file| file.write(rcvmsg) }
-
-          # Unpack NOWRECORD message received from console
-          packing = (FIELDS.collect { |field| field[:pack] }).join ''
-          @logger.info "unpacking #{packing}"
-          msgcontent = rcvmsg.unpack packing
-
-          (0..FIELDS.length - 1).each do |index|
-            @logger.info FIELDS[index][:name].ljust(21) +
-                         msgcontent[index].class.to_s.ljust(10) +
-                         msgcontent[index].to_s
-          end
-
-          influxdb = InfluxDB::Client.new 'wxdata'
-          (0..FIELDS.length - 1).each do |index|
-            value = msgcontent[index]
-            if !FIELDS[index].key?(:validator) || FIELDS[index][:validator].call(value)
-              data = { values: { value: value }, timestamp: timestamp }
-              influxdb.write_point FIELDS[index][:name], data unless value.nil?
-            else
-              @logger.warn "#{FIELDS[index][:name]} #{value} is out of valid range"
-            end
-          end
-        ensure
-          @logger.info 'closing client connection'
-          client_socket&.close
-        end
-      rescue StandardError => e
-        @logger.error "caught exception #{e}"
-        @logger.error e.backtrace.join("\n")
-        exit
-      ensure
-        @logger.info 'closing server'
-        server&.close
-      end
-    ensure
-      @logger.info 'closing udp socket'
-      udpsock&.close
-
-      @logger.info 'done'
+    (0..FIELDS.length - 1).each do |index|
+      @logger.info FIELDS[index][:name].ljust(21) +
+                   msgcontent[index].class.to_s.ljust(10) +
+                   msgcontent[index].to_s
     end
+
+    influxdb = InfluxDB::Client.new 'wxdata'
+    (0..FIELDS.length - 1).each do |index|
+      value = msgcontent[index]
+      if !FIELDS[index].key?(:validator) || FIELDS[index][:validator].call(value)
+        data = { values: { value: value }, timestamp: timestamp }
+        influxdb.write_point FIELDS[index][:name], data unless value.nil?
+      else
+        @logger.warn "#{FIELDS[index][:name]} #{value} is out of valid range"
+      end
+    end
+    @logger.info 'done'
+  rescue StandardError => e
+    @logger.error "caught exception #{e}"
+    @logger.error e.backtrace.join("\n")
   end
 end
 
