@@ -94,7 +94,7 @@ class WS1001 < RecorderBotBase
     end
   end
 
-  class_option :station, type: :string, default: '<broadcast>', desc: 'ip addr of weather station' # FIXME: should be option
+  method_option :station, type: :string, default: '<broadcast>', desc: 'ip addr of weather station', for: :record_status
   no_commands do
     def main
       rcvmsg = query_panel(SNDMSG)
