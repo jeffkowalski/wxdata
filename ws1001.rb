@@ -106,21 +106,23 @@ class WS1001 < RecorderBotBase
       @logger.info "unpacking #{packing}"
       msgcontent = rcvmsg.unpack packing
 
-      (0..FIELDS.length - 1).each do |index|
-        @logger.info FIELDS[index][:name].ljust(21) +
-                     msgcontent[index].class.to_s.ljust(10) +
-                     msgcontent[index].to_s
-      end
-
-      influxdb = InfluxDB::Client.new 'wxdata'
+      influxdb = InfluxDB::Client.new 'wxdata' unless options[:dry_run]
+      data = []
       (0..FIELDS.length - 1).each do |index|
         value = msgcontent[index]
-        if !FIELDS[index].key?(:validator) || FIELDS[index][:validator].call(value)
-          data = { values: { value: value }, timestamp: timestamp }
-          influxdb.write_point FIELDS[index][:name], data unless value.nil?
+        @logger.info FIELDS[index][:name].ljust(21) +
+                     value.class.to_s.ljust(10) +
+                     value.to_s
+        if !value.nil? && (!FIELDS[index].key?(:validator) || FIELDS[index][:validator].call(value))
+          datum = { series: FIELDS[index][:name],
+                    values: { value: value },
+                    timestamp: timestamp }
+          # @logger.debug datum
+          data.push datum
         else
           @logger.warn "#{FIELDS[index][:name]} #{value} is out of valid range"
         end
+        influxdb.write_points data unless options[:dry_run]
       end
     end
   end
