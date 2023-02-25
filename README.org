@@ -15,3 +15,13 @@ Record current weather data to database
 
 * acknowlegements
 This code borrows heavily from the [[https://www.wxforum.net/index.php?topic=30471.50][perl script written by wx5020 on www.wxforum.net]] and the [[https://github.com/AussieSusan/HP1000][HP1000 driver by Susan Mackay]]
+
+
+* WS5000
+Regrettably, one cannot read directly from the WS5000, according to the documentation.
+The full API is available only on GW1000, WH2650 and wn1900 stations.
+So, we can't go any further with this approach, and must instead "listen" to TCP messages sent from the console.
+
+https://github.com/gjr80/weewx-gw1000/blob/master/bin/user/api_data.py from https://github.com/gjr80/weewx-gw1000
+https://osswww.ecowitt.net/uploads/20220407/WN1900%20GW1000,1100%20WH2680,2650%20telenet%20v1.6.4.pdf
+https://www.wxforum.net/index.php?topic=40730.msg446458#msg446458
