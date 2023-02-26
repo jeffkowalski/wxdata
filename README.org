@@ -1,10 +1,10 @@
-wxdata - read weather data from ws1001 and record to influxdb
+wxdata - read data from ambient weather network and record to influxdb
 
 * Install
 bundle install
 * Scan
 Usage:
-  ws1001.rb record-status
+  ambient-weather.rb record-status
 
 Options:
       [--log], [--no-log]          # log output to ~/.log/.nest.log
@@ -12,6 +12,3 @@ Options:
   -v, [--verbose], [--no-verbose]  # increase verbosity
 
 Record current weather data to database
-
-* acknowlegements
-This code borrows heavily from the [[https://www.wxforum.net/index.php?topic=30471.50][perl script written by wx5020 on www.wxforum.net]] and the [[https://github.com/AussieSusan/HP1000][HP1000 driver by Susan Mackay]]

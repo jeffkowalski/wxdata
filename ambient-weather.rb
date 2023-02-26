@@ -50,15 +50,13 @@ FIELD_TRANSFORMS  = {
 }.freeze
 # rubocop: enable Layout/ExtraSpacing, Layout/CommentIndentation, Layout/HashAlignment
 
-LIMIT = 24 * 60 / 5 # one day, in five minute intervals
-
 class AmbientWeather < RecorderBotBase
   no_commands do
-    # in contrast to "main" functions in other bots, this one runs forever
+    method_option :num_records, type: :numeric, default: 12, desc: 'number of records to request', for: :record_status
     def main
       credentials = load_credentials
 
-      response = RestClient.get "https://rt.ambientweather.net/v1/devices/#{credentials[:macAddress]}?applicationKey=#{credentials[:applicationKey]}&apiKey=#{credentials[:apiKey]}&limit=#{LIMIT}"
+      response = RestClient.get "https://rt.ambientweather.net/v1/devices/#{credentials[:macAddress]}?applicationKey=#{credentials[:applicationKey]}&apiKey=#{credentials[:apiKey]}&limit=#{options[:num_records]}"
       @logger.debug response
       response = JSON.parse(response)
 
