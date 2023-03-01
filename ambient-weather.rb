@@ -56,7 +56,9 @@ class AmbientWeather < RecorderBotBase
     def main
       credentials = load_credentials
 
-      response = RestClient.get "https://rt.ambientweather.net/v1/devices/#{credentials[:macAddress]}?applicationKey=#{credentials[:applicationKey]}&apiKey=#{credentials[:apiKey]}&limit=#{options[:num_records]}"
+      response = with_rescue([RestClient::TooManyRequests], logger) do |_try|
+        RestClient.get "https://rt.ambientweather.net/v1/devices/#{credentials[:macAddress]}?applicationKey=#{credentials[:applicationKey]}&apiKey=#{credentials[:apiKey]}&limit=#{options[:num_records]}"
+      end
       @logger.debug response
       response = JSON.parse(response)
 
