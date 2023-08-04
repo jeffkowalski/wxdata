@@ -55,9 +55,15 @@ class AmbientWeather < RecorderBotBase
     def main
       credentials = load_credentials
 
-      response = with_rescue([RestClient::Exceptions::OpenTimeout, RestClient::Exceptions::ReadTimeout, RestClient::TooManyRequests, RestClient::Unauthorized], logger) do |_try|
-        RestClient.get "https://rt.ambientweather.net/v1/devices/#{credentials[:macAddress]}?applicationKey=#{credentials[:applicationKey]}&apiKey=#{credentials[:apiKey]}&limit=#{options[:num_records]}"
+      begin
+        response = with_rescue([RestClient::Exceptions::OpenTimeout, RestClient::Exceptions::ReadTimeout, RestClient::TooManyRequests, RestClient::Unauthorized], logger) do |_try|
+          RestClient.get "https://rt.ambientweather.net/v1/devices/#{credentials[:macAddress]}?applicationKey=#{credentials[:applicationKey]}&apiKey=#{credentials[:apiKey]}&limit=#{options[:num_records]}"
+        end
+      rescue RestClient::TooManyRequests
+        @logger.warn 'too many "TooManyRequests", try again later'
+        return
       end
+
       @logger.debug response
       response = JSON.parse(response)
 
