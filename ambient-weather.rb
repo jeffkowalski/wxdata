@@ -45,7 +45,13 @@ FIELD_TRANSFORMS  = {
   'feelsLikein'        => { type: :to_f, name: 'feels_like_indoor' },           # 64.9
   'dewPointin'         => { type: :to_f, name: 'dew_point_indoor' },            # 41.9
   'lastRain'           => { type: :to_t, name: 'last_rain' },                   # "2023-02-25T14:14:00.000Z"
-  'date'               => { type: nil,   name: nil }                            # "2023-02-25T23:55:00.000Z"
+  'date'               => { type: nil,   name: nil },                           # "2023-02-25T23:55:00.000Z"
+  # strange recennt additions
+  'pm25_in'            => { type: nil,   name: nil },
+  'pm25_in_24h'        => { type: nil,   name: nil },
+  'aqi_pm25_in'        => { type: nil,   name: nil },
+  'aqi_pm25_in_24h'    => { type: nil,   name: nil },
+  'batt_25in'          => { type: nil,   name: nil }
 }.freeze
 # rubocop: enable Layout/ExtraSpacing, Layout/CommentIndentation, Layout/HashAlignment
 
