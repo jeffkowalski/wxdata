@@ -82,7 +82,7 @@ class AmbientWeather < RecorderBotBase
         data = []
         record.each_pair do |key, value|
           unless FIELD_TRANSFORMS.key?(key)
-            @logger.error "unrecognized field '#{key}''"
+            @logger.error "unrecognized field '#{key}'"
             next
           end
 
