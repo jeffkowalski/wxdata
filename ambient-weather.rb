@@ -64,7 +64,7 @@ class AmbientWeather < RecorderBotBase
       credentials = load_credentials
 
       begin
-        response = with_rescue([RestClient::Exceptions::OpenTimeout, RestClient::Exceptions::ReadTimeout, RestClient::TooManyRequests, RestClient::Unauthorized], logger) do |_try|
+        response = with_rescue([RestClient::Exceptions::OpenTimeout, RestClient::Exceptions::ReadTimeout, RestClient::TooManyRequests, RestClient::Unauthorized, Zlib::DataError], logger) do |_try|
           RestClient.get "https://rt.ambientweather.net/v1/devices/#{credentials[:macAddress]}?applicationKey=#{credentials[:applicationKey]}&apiKey=#{credentials[:apiKey]}&limit=#{options[:num_records]}"
         end
       rescue RestClient::TooManyRequests
