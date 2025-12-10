@@ -53,6 +53,7 @@ FIELD_TRANSFORMS  = {
   'aqi_pm25_24h'       => { type: nil,   name: nil },
   'aqi_pm25_in'        => { type: nil,   name: nil },
   'aqi_pm25_in_24h'    => { type: nil,   name: nil },
+  'batt8'              => { type: nil,   name: nil },
   'batt_25in'          => { type: nil,   name: nil }
 }.freeze
 # rubocop: enable Layout/ExtraSpacing, Layout/CommentIndentation, Layout/HashAlignment
