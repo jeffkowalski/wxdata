@@ -52,9 +52,11 @@ FIELD_TRANSFORMS  = {
   'aqi_pm25_in'        => { type: nil,   name: nil },
   'aqi_pm25_in_24h'    => { type: nil,   name: nil },
   'batt8'              => { type: nil,   name: nil },
+  'batleak3'           => { type: nil,   name: nil },
   'batt_25in'          => { type: nil,   name: nil },
   'batt_lw2'           => { type: nil,   name: nil },
   'leafwetness2'       => { type: nil,   name: nil },
+  'leak3'              => { type: nil,   name: nil },
   'pm25_in'            => { type: nil,   name: nil },
   'pm25_in_24h'        => { type: nil,   name: nil }
 }.freeze
