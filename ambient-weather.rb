@@ -102,7 +102,7 @@ class AmbientWeather < RecorderBotBase
           data.push datum
         end
 
-        influxdb = InfluxDB::Client.new 'wxdata' unless options[:dry_run]
+        influxdb = new_influxdb_client 'wxdata'
         influxdb.write_points data unless options[:dry_run]
       end
     end
